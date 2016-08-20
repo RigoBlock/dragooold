@@ -24,7 +24,7 @@ contract Dragoowned {
 
 contract Dragoo is Dragoowned {
     
-    uint256 public totalSupply;
+    uint256 public totalSupply = 0;
     
     function balanceOf(address _who) constant returns (uint256 balance);
     
@@ -56,15 +56,17 @@ contract StandardDragoo is Dragoo {
         balances[tx.origin] += amount;
         balances[feeCollector] += fee_dragoo;
         balances[Dragator] += fee_dragator;
-        Transfer(0, msg.sender, amount);
+        totalSupply += gross_amount;
+        Transfer(0, tx.origin, amount);
         Transfer(tx.origin, this, msg.value);
         return amount;
     }
   
     function sell(uint256 amount) returns (uint revenue, bool success) {
         revenue = amount * price;
-        if (balances[tx.origin] >= amount && balances[tx.origin] + amount > balances[tx.origin] && amount > min_order) {
+        if (balances[tx.origin] >= amount && balances[tx.origin] + amount > balances[tx.origin] && revenue >= min_order) {
             balances[tx.origin] -= amount;
+            totalSupply -= amount;
 		    if (!tx.origin.send(amount * price)) {
 		        throw;
 		    } else {  
@@ -105,14 +107,13 @@ contract HumanStandardDragoo is StandardDragoo {
     string public symbol;
     string public version = 'H0.1';
     
-    function HumanStandardDragoo(string _dragoName,  string _dragoSymbol, uint256 _transactionFee) {
+    function HumanStandardDragoo(string _dragoName,  string _dragoSymbol) {
         name = _dragoName;    
         symbol = _dragoSymbol;
-        transactionFee = _transactionFee;
     }
     
     function() {
-		throw;
+		buy();
     }
 }
 
@@ -122,9 +123,8 @@ contract DragooRegistry {
     mapping(address => uint) public toDrago;
     mapping(address => address[]) public created;
     address public _drago;
-	uint public _dragoID;
+//	uint public _dragoID;
 	uint public nextDragoID;
-	bytes public humanStandardByteCode;
     
     function accountOf(uint _dragoID) constant returns (address) {
         return dragos[_dragoID];
@@ -143,10 +143,10 @@ contract DragooRegistry {
 contract HumanStandardDragooFactory is DragooRegistry, Dragoowned {
 	
 	string public version = 'DF0.1'; //alt uint public version = 1
-	uint[] _dragoID;
+//	uint[] _dragoID;
 	uint public fee = 0;
 	address public dragoDAO = tx.origin;
-	address[] newDragos;
+	address[] public newDragos;
 	
 	modifier when_fee_paid { if (msg.value < fee) return; _ }
 	
@@ -156,8 +156,8 @@ contract HumanStandardDragooFactory is DragooRegistry, Dragoowned {
 	    
 	    }	
 	
-	function createHumanStandardDragoo(string _name, string _symbol, uint256 _transactionFee) when_fee_paid returns (address _drago, uint _dragoID) {
-		HumanStandardDragoo newDrago = (new HumanStandardDragoo(_name, _symbol, _transactionFee));
+	function createHumanStandardDragoo(string _name, string _symbol) when_fee_paid returns (address _drago, uint _dragoID) {
+		HumanStandardDragoo newDrago = (new HumanStandardDragoo(_name, _symbol));
 		newDragos.push(address(newDrago));
 		created[msg.sender].push(address(newDrago));
         newDrago.transferDragownership(tx.origin);
@@ -176,6 +176,11 @@ contract HumanStandardDragooFactory is DragooRegistry, Dragoowned {
         dragoDAO = _dragoDAO;
     }
     
+    function drain() onlyDragowner {
+        if (!dragoDAO.send(this.balance))
+            throw;
+    }
+    
     function() {
         throw;
     }
@@ -183,21 +188,35 @@ contract HumanStandardDragooFactory is DragooRegistry, Dragoowned {
 
 contract DragooFactoryInterface is HumanStandardDragooFactory {
     
-    HumanStandardDragoo m;
-
+    address _targetDragoo;
         
     function buyDragoo(address targetDragoo) {
-        m = HumanStandardDragoo(targetDragoo);
-        m.buy();
+        HumanStandardDragoo m = HumanStandardDragoo(targetDragoo);
+        m.buy.value(msg.value)();
     }
     
     function sellDragoo(address targetDragoo, uint256 amount) {
-        m = HumanStandardDragoo(targetDragoo);
+        HumanStandardDragoo m = HumanStandardDragoo(targetDragoo);
         m.sell(amount);
     }
     
-    function drain() onlyDragowner {
-        if (!dragoDAO.send(this.balance))
-            throw;
+    function changeRatio(address targetDragoo, uint256 _ratio) {
+        HumanStandardDragoo m = HumanStandardDragoo(targetDragoo);
+        m.changeRatio(_ratio);
+    }
+    
+    function setTransactionFee(address targetDragoo, uint _transactionFee) {    //exmple, uint public fee = 100 finney;
+        HumanStandardDragoo m = HumanStandardDragoo(targetDragoo);
+        m.setTransactionFee(_transactionFee);       //fee is in basis points (1 bps = 0.01%)
+    }
+    
+    function changeFeeCollector(address targetDragoo, address _feeCollector) {
+        HumanStandardDragoo m = HumanStandardDragoo(targetDragoo);
+        m.changeFeeCollector(_feeCollector);
+    }
+    
+    function changeDragator(address targetDragoo, address _dragator) {
+        HumanStandardDragoo m = HumanStandardDragoo(targetDragoo);
+        m.changeDragator(_dragator);
     }
 }
