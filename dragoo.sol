@@ -1,3 +1,4 @@
+// Copyright 2016 Gabriele Rigo
 //! Dragoo contract.
 //! By Gabriele Rigo (Rigo Investment), 2016.
 //! Released under the Apache Licence 2.
