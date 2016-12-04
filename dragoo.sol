@@ -114,7 +114,7 @@ contract HumanStandardDragoo is StandardDragoo {
     }
     
     function() {
-		buy();
+	buy();
     }
 }
 
@@ -124,8 +124,8 @@ contract DragooRegistry {
     mapping(address => uint) public toDrago;
     mapping(address => address[]) public created;
     address public _drago;
-//	uint public _dragoID;
-	uint public nextDragoID;
+//  uint public _dragoID;
+    uint public nextDragoID;
     
     function accountOf(uint _dragoID) constant returns (address) {
         return dragos[_dragoID];
@@ -143,24 +143,22 @@ contract DragooRegistry {
 
 contract HumanStandardDragooFactory is DragooRegistry, Dragoowned {
 	
-	string public version = 'DF0.1'; //alt uint public version = 1
-//	uint[] _dragoID;
-	uint public fee = 0;
-	address public dragoDAO = tx.origin;
-	address[] public newDragos;
-	
-	modifier when_fee_paid { if (msg.value < fee) return; _ }
+    string public version = 'DF0.1'; //alt uint public version = 1
+//  uint[] _dragoID;
+    uint public fee = 0;
+    address public dragoDAO = tx.origin;
+    address[] public newDragos;
+    
+    modifier when_fee_paid { if (msg.value < fee) return; _ }
 	
     event DragoCreated(string _name, address _drago, address _dragowner, uint _dragoID);
     
-	function HumanStandardDragooFactory () {
-	    
-	    }	
-	
-	function createHumanStandardDragoo(string _name, string _symbol) when_fee_paid returns (address _drago, uint _dragoID) {
-		HumanStandardDragoo newDrago = (new HumanStandardDragoo(_name, _symbol));
-		newDragos.push(address(newDrago));
-		created[msg.sender].push(address(newDrago));
+    function HumanStandardDragooFactory () { }
+    
+    function createHumanStandardDragoo(string _name, string _symbol) when_fee_paid returns (address _drago, uint _dragoID) {
+	HumanStandardDragoo newDrago = (new HumanStandardDragoo(_name, _symbol));
+	newDragos.push(address(newDrago));
+	created[msg.sender].push(address(newDrago));
         newDrago.transferDragownership(tx.origin);
         _dragoID = nextDragoID;     //decided at last to add sequential ID numbers
         ++nextDragoID;              //decided at last to add sequential ID numbers
