@@ -1,7 +1,8 @@
-// Copyright 2016 Gabriele Rigo
-//! Dragoo contract.
+//! Hedge Fund contract.
 //! By Gabriele Rigo (Rigo Investment), 2016.
 //! Released under the Apache Licence 2.
+
+pragma solidity ^0.4.2; //Solidity version: 0.4.2+commit.af6afb04.mod.Emscripten.clang
 
 contract Dragoowned {
     address public dragowner;
@@ -9,12 +10,12 @@ contract Dragoowned {
     event NewDragowner(address indexed old, address indexed current);
 
     function Dragoowned() {
-        dragowner = tx.origin;      //double check whether tx.origin, as prev but not workin
+        dragowner = tx.origin;
     }
 
     modifier onlyDragowner {
         if (tx.origin != dragowner) return;
-        _
+        _;
     }
 
     function transferDragownership(address newDragowner) onlyDragowner {
@@ -45,9 +46,9 @@ contract StandardDragoo is Dragoo {
     uint fee_dragator;
     uint256 public ratio = 80;
     
-    modifier onlyDragator { if (tx.origin != Dragator) return; _ }
+    modifier onlyDragator { if (tx.origin != Dragator) return; _; }
     
-    function buy() returns (uint amount) {
+    function buy() payable returns (uint amount) {
         if (msg.value < min_order) throw;
         gross_amount = msg.value / price;
         fee = gross_amount * transactionFee / (100 ether);
@@ -113,8 +114,8 @@ contract HumanStandardDragoo is StandardDragoo {
         symbol = _dragoSymbol;
     }
     
-    function() {
-	buy();
+    function() payable {
+		buy();
     }
 }
 
@@ -124,8 +125,7 @@ contract DragooRegistry {
     mapping(address => uint) public toDrago;
     mapping(address => address[]) public created;
     address public _drago;
-//  uint public _dragoID;
-    uint public nextDragoID;
+	uint public nextDragoID;
     
     function accountOf(uint _dragoID) constant returns (address) {
         return dragos[_dragoID];
@@ -143,25 +143,24 @@ contract DragooRegistry {
 
 contract HumanStandardDragooFactory is DragooRegistry, Dragoowned {
 	
-    string public version = 'DF0.1'; //alt uint public version = 1
-//  uint[] _dragoID;
-    uint public fee = 0;
-    address public dragoDAO = tx.origin;
-    address[] public newDragos;
-    
-    modifier when_fee_paid { if (msg.value < fee) return; _ }
+	string public version = 'DF0.1';
+	uint public fee = 0;
+	address public dragoDAO = tx.origin;
+	address[] public newDragos;
 	
-    event DragoCreated(string _name, address _drago, address _dragowner, uint _dragoID);
+	modifier when_fee_paid { if (msg.value < fee) return; _; }
+	
+    event DragoCreated(string _name, address indexed _drago, address indexed _dragowner, uint indexed _dragoID);
     
-    function HumanStandardDragooFactory () { }
-    
-    function createHumanStandardDragoo(string _name, string _symbol) when_fee_paid returns (address _drago, uint _dragoID) {
-	HumanStandardDragoo newDrago = (new HumanStandardDragoo(_name, _symbol));
-	newDragos.push(address(newDrago));
-	created[msg.sender].push(address(newDrago));
+	function HumanStandardDragooFactory () { }
+	
+	function createHumanStandardDragoo(string _name, string _symbol) when_fee_paid returns (address _drago, uint _dragoID) {
+		HumanStandardDragoo newDrago = (new HumanStandardDragoo(_name, _symbol));
+		newDragos.push(address(newDrago));
+		created[msg.sender].push(address(newDrago));
         newDrago.transferDragownership(tx.origin);
-        _dragoID = nextDragoID;     //decided at last to add sequential ID numbers
-        ++nextDragoID;              //decided at last to add sequential ID numbers
+        _dragoID = nextDragoID;
+        ++nextDragoID;
         register(_drago, _dragoID);
         DragoCreated(_name, address(newDrago), tx.origin, uint(newDrago));
         return (address(newDrago), uint(newDrago));
@@ -188,15 +187,20 @@ contract HumanStandardDragooFactory is DragooRegistry, Dragoowned {
 contract DragooFactoryInterface is HumanStandardDragooFactory {
     
     address _targetDragoo;
+    
+    event BuyDragoo(address indexed _drago, address indexed who, uint amount);
+    event SellDragoo(address indexed _drago, address indexed who, uint amount);
         
-    function buyDragoo(address targetDragoo) {
+    function buyDragoo(address targetDragoo) payable {
         HumanStandardDragoo m = HumanStandardDragoo(targetDragoo);
         m.buy.value(msg.value)();
+        BuyDragoo(targetDragoo, msg.sender, msg.value);
     }
     
     function sellDragoo(address targetDragoo, uint256 amount) {
         HumanStandardDragoo m = HumanStandardDragoo(targetDragoo);
         m.sell(amount);
+        SellDragoo(targetDragoo, msg.sender, msg.value);
     }
     
     function changeRatio(address targetDragoo, uint256 _ratio) {
